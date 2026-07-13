@@ -1,5 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forest_brewery_app/core/location/location_service.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:forest_brewery_app/core/error/app_exception.dart';
@@ -11,9 +12,11 @@ import 'package:forest_brewery_app/features/breweries/presentation/list/bloc/bre
 
 class MockBreweryRepository extends Mock implements BreweryRepository {}
 
+class MockLocationService extends Mock implements LocationService {}
+
 void main() {
   late MockBreweryRepository repository;
-
+  late MockLocationService locationService;
   final breweries = [
     const Brewery(
       id: '1',
@@ -28,6 +31,7 @@ void main() {
 
   setUp(() {
     repository = MockBreweryRepository();
+    locationService = MockLocationService();
   });
 
   group('BreweryListBloc', () {
@@ -41,7 +45,7 @@ void main() {
           ),
         ).thenAnswer((_) async => breweries);
 
-        return BreweryListBloc(repository);
+        return BreweryListBloc(repository, locationService);
       },
       act: (bloc) {
         bloc.add(const BreweryListStarted());
@@ -68,7 +72,7 @@ void main() {
           ),
         ).thenThrow(const NetworkException('No internet connection.'));
 
-        return BreweryListBloc(repository);
+        return BreweryListBloc(repository, locationService);
       },
       act: (bloc) {
         bloc.add(const BreweryListStarted());

@@ -65,11 +65,97 @@ class _BreweryListPageState extends State<BreweryListPage> {
     ).pushNamed(AppRoutes.breweryDetail, arguments: breweryId);
   }
 
+  Widget _buildSuccessContent(BreweryListSuccess state) {
+    final showDistanceBanner =
+        state.isSortingByDistance ||
+        (state.isSortedByDistance && state.isLoadingMore);
+
+    return Stack(
+      children: [
+        BreweryListContent(
+          state: state,
+          scrollController: _scrollController,
+          onBreweryTap: _openBreweryDetail,
+          onRefresh: () async {
+            _loadNormalListAndClearSearch();
+          },
+        ),
+
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          top: showDistanceBanner ? 0 : -56,
+          left: 0,
+          right: 0,
+          child: Material(
+            elevation: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              color: Theme.of(context).colorScheme.surface,
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      state.isLoadingMore
+                          ? 'Updating nearest breweries...'
+                          : 'Sorting breweries by your location...',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Breweries'),
+        actions: [
+          BlocBuilder<BreweryListBloc, BreweryListState>(
+            builder: (context, state) {
+              final canSortByDistance = state is BreweryListSuccess;
+              final isSortingByDistance =
+                  canSortByDistance && state.isSortingByDistance;
+
+              if (isSortingByDistance) {
+                return const Padding(
+                  padding: EdgeInsets.only(right: 16),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
+
+              return IconButton(
+                tooltip: 'Sort by nearest',
+                icon: const Icon(Icons.my_location),
+                onPressed: canSortByDistance
+                    ? () {
+                        context.read<BreweryListBloc>().add(
+                          const BreweryListSortByDistanceRequested(),
+                        );
+                      }
+                    : null,
+              );
+            },
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(72),
           child: Padding(
@@ -106,18 +192,33 @@ class _BreweryListPageState extends State<BreweryListPage> {
         listenWhen: (previous, current) {
           if (current is! BreweryListSuccess) return false;
 
-          return current.loadMoreErrorMessage != null;
+          final justSortedByDistance =
+              previous is BreweryListSuccess &&
+              previous.isSortingByDistance &&
+              !current.isSortingByDistance &&
+              current.isSortedByDistance;
+
+          return current.loadMoreErrorMessage != null ||
+              current.distanceErrorMessage != null ||
+              justSortedByDistance;
         },
         listener: (context, state) {
           if (state is! BreweryListSuccess) return;
 
-          final message = state.loadMoreErrorMessage;
+          final errorMessage =
+              state.loadMoreErrorMessage ?? state.distanceErrorMessage;
+
+          final message =
+              errorMessage ??
+              (state.isSortedByDistance
+                  ? 'Breweries sorted by nearest location.'
+                  : null);
 
           if (message == null) return;
 
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(message)));
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(message)));
         },
         builder: (context, state) {
           return switch (state) {
@@ -131,14 +232,7 @@ class _BreweryListPageState extends State<BreweryListPage> {
               message: message,
               onRetry: _loadNormalListAndClearSearch,
             ),
-            BreweryListSuccess() => BreweryListContent(
-              state: state,
-              scrollController: _scrollController,
-              onBreweryTap: _openBreweryDetail,
-              onRefresh: () async {
-                _loadNormalListAndClearSearch();
-              },
-            ),
+            BreweryListSuccess() => _buildSuccessContent(state),
           };
         },
       ),

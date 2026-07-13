@@ -19,3 +19,7 @@ final class BreweryListSearchQueryChanged extends BreweryListEvent {
 
   const BreweryListSearchQueryChanged(this.query);
 }
+
+final class BreweryListSortByDistanceRequested extends BreweryListEvent {
+  const BreweryListSortByDistanceRequested();
+}

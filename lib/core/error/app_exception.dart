@@ -31,3 +31,9 @@ class UnknownException extends AppException {
     super.message = 'Something went wrong. Please try again.',
   ]);
 }
+
+class LocationException extends AppException {
+  const LocationException([
+    super.message = 'Unable to get your current location.',
+  ]);
+}

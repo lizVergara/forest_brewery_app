@@ -8,6 +8,17 @@ class BreweryListItem extends StatelessWidget {
 
   const BreweryListItem({required this.brewery, this.onTap, super.key});
 
+  String get _subtitle {
+    final parts = [
+      brewery.breweryType,
+      if (brewery.city.isNotEmpty) brewery.city,
+      if (brewery.distanceInKm != null)
+        '${brewery.distanceInKm!.toStringAsFixed(1)} km away',
+    ];
+
+    return parts.join(' • ');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -15,14 +26,7 @@ class BreweryListItem extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         title: Text(brewery.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            '${brewery.breweryType} • ${brewery.city}',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
+        subtitle: Text(_subtitle),
         trailing: const Icon(Icons.chevron_right),
       ),
     );

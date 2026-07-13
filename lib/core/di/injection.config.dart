@@ -10,6 +10,8 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:dio/dio.dart' as _i361;
+import 'package:forest_brewery_app/core/location/location_service.dart'
+    as _i585;
 import 'package:forest_brewery_app/core/network/dio_client.dart' as _i290;
 import 'package:forest_brewery_app/features/breweries/data/datasources/brewery_remote_datasource.dart'
     as _i903;
@@ -39,11 +41,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i79.BreweryRepository>(
       () => _i132.BreweryRepositoryImpl(gh<_i903.BreweryRemoteDataSource>()),
     );
+    gh.lazySingleton<_i585.LocationService>(() => _i585.LocationServiceImpl());
+    gh.factory<_i977.BreweryListBloc>(
+      () => _i977.BreweryListBloc(
+        gh<_i79.BreweryRepository>(),
+        gh<_i585.LocationService>(),
+      ),
+    );
     gh.factory<_i565.BreweryDetailCubit>(
       () => _i565.BreweryDetailCubit(gh<_i79.BreweryRepository>()),
-    );
-    gh.factory<_i977.BreweryListBloc>(
-      () => _i977.BreweryListBloc(gh<_i79.BreweryRepository>()),
     );
     return this;
   }

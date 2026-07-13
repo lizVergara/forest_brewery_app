@@ -32,6 +32,11 @@ final class BreweryListSuccess extends BreweryListState {
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
   final String searchQuery;
+  final bool isSortingByDistance;
+  final bool isSortedByDistance;
+  final String? distanceErrorMessage;
+  final double? userLatitude;
+  final double? userLongitude;
 
   const BreweryListSuccess({
     required this.breweries,
@@ -40,6 +45,11 @@ final class BreweryListSuccess extends BreweryListState {
     this.isLoadingMore = false,
     this.loadMoreErrorMessage,
     this.searchQuery = '',
+    this.isSortingByDistance = false,
+    this.isSortedByDistance = false,
+    this.distanceErrorMessage,
+    this.userLatitude,
+    this.userLongitude,
   });
 
   bool get isSearchResult => searchQuery.trim().isNotEmpty;
@@ -51,7 +61,14 @@ final class BreweryListSuccess extends BreweryListState {
     bool? isLoadingMore,
     String? loadMoreErrorMessage,
     String? searchQuery,
+    bool? isSortingByDistance,
+    bool? isSortedByDistance,
+    String? distanceErrorMessage,
+    double? userLatitude,
+    double? userLongitude,
     bool clearLoadMoreError = false,
+    bool clearDistanceError = false,
+    bool clearUserLocation = false,
   }) {
     return BreweryListSuccess(
       breweries: breweries ?? this.breweries,
@@ -62,6 +79,17 @@ final class BreweryListSuccess extends BreweryListState {
           ? null
           : loadMoreErrorMessage ?? this.loadMoreErrorMessage,
       searchQuery: searchQuery ?? this.searchQuery,
+      isSortingByDistance: isSortingByDistance ?? this.isSortingByDistance,
+      isSortedByDistance: isSortedByDistance ?? this.isSortedByDistance,
+      distanceErrorMessage: clearDistanceError
+          ? null
+          : distanceErrorMessage ?? this.distanceErrorMessage,
+      userLatitude: clearUserLocation
+          ? null
+          : userLatitude ?? this.userLatitude,
+      userLongitude: clearUserLocation
+          ? null
+          : userLongitude ?? this.userLongitude,
     );
   }
 }

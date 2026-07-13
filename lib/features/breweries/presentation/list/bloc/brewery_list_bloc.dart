@@ -1,5 +1,8 @@
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:forest_brewery_app/core/location/distance_calculator.dart';
+import 'package:forest_brewery_app/core/location/location_service.dart';
+import 'package:forest_brewery_app/features/breweries/domain/entities/brewery.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../../../../core/error/app_exception.dart';
@@ -13,8 +16,10 @@ class BreweryListBloc extends Bloc<BreweryListEvent, BreweryListState> {
   static const int _perPage = 20;
 
   final BreweryRepository _repository;
+  final LocationService _locationService;
 
-  BreweryListBloc(this._repository) : super(const BreweryListInitial()) {
+  BreweryListBloc(this._repository, this._locationService)
+    : super(const BreweryListInitial()) {
     on<BreweryListStarted>(_onStarted, transformer: droppable());
 
     on<BreweryListNextPageRequested>(
@@ -30,6 +35,11 @@ class BreweryListBloc extends Bloc<BreweryListEvent, BreweryListState> {
     on<BreweryListSearchQueryChanged>(
       _onSearchQueryChanged,
       transformer: _debounceRestartable(const Duration(milliseconds: 500)),
+    );
+
+    on<BreweryListSortByDistanceRequested>(
+      _onSortByDistanceRequested,
+      transformer: droppable(),
     );
   }
 
@@ -95,6 +105,7 @@ class BreweryListBloc extends Bloc<BreweryListEvent, BreweryListState> {
     if (currentState.isSearchResult) return;
     if (currentState.isLoadingMore) return;
     if (currentState.hasReachedEnd) return;
+
     emit(currentState.copyWith(isLoadingMore: true, clearLoadMoreError: true));
 
     try {
@@ -105,12 +116,39 @@ class BreweryListBloc extends Bloc<BreweryListEvent, BreweryListState> {
         perPage: _perPage,
       );
 
+      if (newBreweries.isEmpty) {
+        emit(
+          currentState.copyWith(
+            hasReachedEnd: true,
+            isLoadingMore: false,
+            clearLoadMoreError: true,
+          ),
+        );
+        return;
+      }
+
+      var updatedBreweries = [...currentState.breweries, ...newBreweries];
+
+      final shouldKeepDistanceSorting =
+          currentState.isSortedByDistance &&
+          currentState.userLatitude != null &&
+          currentState.userLongitude != null;
+
+      if (shouldKeepDistanceSorting) {
+        updatedBreweries = _sortBreweriesByDistance(
+          breweries: updatedBreweries,
+          userLatitude: currentState.userLatitude!,
+          userLongitude: currentState.userLongitude!,
+        );
+      }
+
       emit(
         currentState.copyWith(
-          breweries: [...currentState.breweries, ...newBreweries],
+          breweries: updatedBreweries,
           currentPage: nextPage,
           hasReachedEnd: newBreweries.length < _perPage,
           isLoadingMore: false,
+          isSortedByDistance: shouldKeepDistanceSorting,
           clearLoadMoreError: true,
         ),
       );
@@ -165,6 +203,89 @@ class BreweryListBloc extends Bloc<BreweryListEvent, BreweryListState> {
     } catch (_) {
       emit(const BreweryListError('Something went wrong. Please try again.'));
     }
+  }
+
+  Future<void> _onSortByDistanceRequested(
+    BreweryListSortByDistanceRequested event,
+    Emitter<BreweryListState> emit,
+  ) async {
+    final currentState = state;
+
+    if (currentState is! BreweryListSuccess) return;
+
+    emit(
+      currentState.copyWith(
+        isSortingByDistance: true,
+        clearDistanceError: true,
+      ),
+    );
+
+    try {
+      final position = await _locationService.getCurrentPosition();
+
+      final sortedBreweries = _sortBreweriesByDistance(
+        breweries: currentState.breweries,
+        userLatitude: position.latitude,
+        userLongitude: position.longitude,
+      );
+
+      emit(
+        currentState.copyWith(
+          breweries: sortedBreweries,
+          isSortingByDistance: false,
+          isSortedByDistance: true,
+          userLatitude: position.latitude,
+          userLongitude: position.longitude,
+          clearDistanceError: true,
+        ),
+      );
+    } on AppException catch (error) {
+      emit(
+        currentState.copyWith(
+          isSortingByDistance: false,
+          distanceErrorMessage: error.message,
+        ),
+      );
+    } catch (_) {
+      emit(
+        currentState.copyWith(
+          isSortingByDistance: false,
+          distanceErrorMessage: 'Unable to sort breweries by distance.',
+        ),
+      );
+    }
+  }
+
+  List<Brewery> _sortBreweriesByDistance({
+    required List<Brewery> breweries,
+    required double userLatitude,
+    required double userLongitude,
+  }) {
+    final breweriesWithDistance = breweries.map((brewery) {
+      if (!brewery.hasCoordinates) return brewery;
+
+      final distanceInKm = DistanceCalculator.calculateDistanceInKm(
+        startLatitude: userLatitude,
+        startLongitude: userLongitude,
+        endLatitude: brewery.latitude!,
+        endLongitude: brewery.longitude!,
+      );
+
+      return brewery.copyWith(distanceInKm: distanceInKm);
+    }).toList();
+
+    breweriesWithDistance.sort((a, b) {
+      final distanceA = a.distanceInKm;
+      final distanceB = b.distanceInKm;
+
+      if (distanceA == null && distanceB == null) return 0;
+      if (distanceA == null) return 1;
+      if (distanceB == null) return -1;
+
+      return distanceA.compareTo(distanceB);
+    });
+
+    return breweriesWithDistance;
   }
 }
 
