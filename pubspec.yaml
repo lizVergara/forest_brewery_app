@@ -39,6 +39,7 @@ dependencies:
   dio: ^5.10.0
   get_it: ^9.2.1
   injectable: ^3.0.0
+  stream_transform: ^2.1.1
 
 dev_dependencies:
   flutter_test:
