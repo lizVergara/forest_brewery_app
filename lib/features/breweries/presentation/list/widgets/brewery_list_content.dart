@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../bloc/brewery_list_bloc.dart';
-import '../bloc/brewery_list_event.dart';
 import '../bloc/brewery_list_state.dart';
 import 'brewery_list_item.dart';
 
@@ -10,11 +7,14 @@ class BreweryListContent extends StatelessWidget {
   final BreweryListSuccess state;
   final ScrollController scrollController;
   final ValueChanged<String> onBreweryTap;
+  final Future<void> Function() onRefresh;
 
   const BreweryListContent({
     required this.state,
     required this.scrollController,
     required this.onBreweryTap,
+    required this.onRefresh,
+
     super.key,
   });
 
@@ -26,11 +26,7 @@ class BreweryListContent extends StatelessWidget {
         : breweries.length;
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<BreweryListBloc>().add(
-          const BreweryListRefreshRequested(),
-        );
-      },
+      onRefresh: onRefresh,
       child: ListView.builder(
         controller: scrollController,
         itemCount: itemCount,

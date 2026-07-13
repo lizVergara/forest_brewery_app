@@ -19,6 +19,7 @@ class BreweryListPage extends StatefulWidget {
 
 class _BreweryListPageState extends State<BreweryListPage> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -33,7 +34,18 @@ class _BreweryListPageState extends State<BreweryListPage> {
       ..removeListener(_onScroll)
       ..dispose();
 
+    _searchController.dispose();
+
     super.dispose();
+  }
+
+  void _loadNormalListAndClearSearch() {
+    if (_searchController.text.isNotEmpty) {
+      _searchController.clear();
+      setState(() {});
+    }
+
+    context.read<BreweryListBloc>().add(const BreweryListRefreshRequested());
   }
 
   void _onScroll() {
@@ -56,7 +68,40 @@ class _BreweryListPageState extends State<BreweryListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Breweries')),
+      appBar: AppBar(
+        title: const Text('Breweries'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(72),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search breweries',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: _loadNormalListAndClearSearch,
+                      ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+              ),
+              onChanged: (value) {
+                setState(() {});
+
+                context.read<BreweryListBloc>().add(
+                  BreweryListSearchQueryChanged(value),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
       body: BlocConsumer<BreweryListBloc, BreweryListState>(
         listenWhen: (previous, current) {
           if (current is! BreweryListSuccess) return false;
@@ -84,16 +129,15 @@ class _BreweryListPageState extends State<BreweryListPage> {
             ),
             BreweryListError(:final message) => AppErrorView(
               message: message,
-              onRetry: () {
-                context.read<BreweryListBloc>().add(
-                  const BreweryListRefreshRequested(),
-                );
-              },
+              onRetry: _loadNormalListAndClearSearch,
             ),
             BreweryListSuccess() => BreweryListContent(
               state: state,
               scrollController: _scrollController,
               onBreweryTap: _openBreweryDetail,
+              onRefresh: () async {
+                _loadNormalListAndClearSearch();
+              },
             ),
           };
         },

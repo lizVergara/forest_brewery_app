@@ -18,8 +18,11 @@ final class BreweryListEmpty extends BreweryListState {
 
 final class BreweryListError extends BreweryListState {
   final String message;
+  final String searchQuery;
 
-  const BreweryListError(this.message);
+  const BreweryListError(this.message, {this.searchQuery = ''});
+
+  bool get isSearchError => searchQuery.trim().isNotEmpty;
 }
 
 final class BreweryListSuccess extends BreweryListState {
@@ -28,6 +31,7 @@ final class BreweryListSuccess extends BreweryListState {
   final bool hasReachedEnd;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
+  final String searchQuery;
 
   const BreweryListSuccess({
     required this.breweries,
@@ -35,7 +39,10 @@ final class BreweryListSuccess extends BreweryListState {
     required this.hasReachedEnd,
     this.isLoadingMore = false,
     this.loadMoreErrorMessage,
+    this.searchQuery = '',
   });
+
+  bool get isSearchResult => searchQuery.trim().isNotEmpty;
 
   BreweryListSuccess copyWith({
     List<Brewery>? breweries,
@@ -43,6 +50,7 @@ final class BreweryListSuccess extends BreweryListState {
     bool? hasReachedEnd,
     bool? isLoadingMore,
     String? loadMoreErrorMessage,
+    String? searchQuery,
     bool clearLoadMoreError = false,
   }) {
     return BreweryListSuccess(
@@ -53,6 +61,7 @@ final class BreweryListSuccess extends BreweryListState {
       loadMoreErrorMessage: clearLoadMoreError
           ? null
           : loadMoreErrorMessage ?? this.loadMoreErrorMessage,
+      searchQuery: searchQuery ?? this.searchQuery,
     );
   }
 }
